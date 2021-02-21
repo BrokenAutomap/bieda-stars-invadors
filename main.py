@@ -2,6 +2,7 @@ import sys
 import math
 import numpy
 import pygame
+import time
 
 pygame.init()
 
@@ -240,6 +241,10 @@ class GameObject:
 
 
 class Player(GameObject):  # Player class, health system to implement
+
+    bullet_picture = []
+    keywords = ["bullet_picture"]
+
     def __init__(
             self, name,
             position, max_speed, acceleration, resistance, mass, bounciness,
@@ -249,29 +254,101 @@ class Player(GameObject):  # Player class, health system to implement
             position, max_speed, acceleration, resistance, mass, bounciness,
             object_picture, *collision_group, **custom_hitbox)
         self.health = health
+        self.timer = time.time()
 
-    def control(self):  # Method used to manage events used for player's control
+        for keyword, value in custom_hitbox.items():
+            if keyword in self.keywords:
+                if isinstance(value, pygame.Surface):
+                    self.bullet_picture.append(value)
+
+
+    @classmethod
+    def control(cls, player_1, player_2):  # Method used to manage events used for player's control
         for event in pygame.event.get():
+            print(cls.bullet_picture[0])
             if event.type == pygame.QUIT:
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_w:
-                    self.move_direction[0] = True
+                    player_1.move_direction[0] = True
                 if event.key == pygame.K_s:
-                    self.move_direction[1] = True
+                    player_1.move_direction[1] = True
                 if event.key == pygame.K_a:
-                    self.move_direction[2] = True
+                    player_1.move_direction[2] = True
                 if event.key == pygame.K_d:
-                    self.move_direction[3] = True
+                    player_1.move_direction[3] = True
+
+                if event.key == pygame.K_UP:
+                    player_2.move_direction[0] = True
+                if event.key == pygame.K_DOWN:
+                    player_2.move_direction[1] = True
+                if event.key == pygame.K_LEFT:
+                    player_2.move_direction[2] = True
+                if event.key == pygame.K_RIGHT:
+                    player_2.move_direction[3] = True
+
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_w:
-                    self.move_direction[0] = False
+                    player_1.move_direction[0] = False
                 if event.key == pygame.K_s:
-                    self.move_direction[1] = False
+                    player_1.move_direction[1] = False
                 if event.key == pygame.K_a:
-                    self.move_direction[2] = False
+                    player_1.move_direction[2] = False
                 if event.key == pygame.K_d:
-                    self.move_direction[3] = False
+                    player_1.move_direction[3] = False
+
+                if event.key == pygame.K_UP:
+                    player_2.move_direction[0] = False
+                if event.key == pygame.K_DOWN:
+                    player_2.move_direction[1] = False
+                if event.key == pygame.K_LEFT:
+                    player_2.move_direction[2] = False
+                if event.key == pygame.K_RIGHT:
+                    player_2.move_direction[3] = False
+
+                if time.time() - player_1.timer > 2:
+
+                    if event.key == pygame.K_SPACE:
+                        Bullet.summon_bullet(player_1.position, cls.bullet_picture[0])
+                        position = [player_1.position[0] + 25, player_1.position[1]]
+                        Bullet.summon_bullet(position, cls.bullet_picture[0])
+                        player_1.timer = time.time()
+
+                if time.time() - player_2.timer > 2:
+                    if event.key == pygame.K_RCTRL:
+                        bullet = Bullet.summon_bullet(player_2.position, cls.bullet_picture[0])
+                        bullet.speed = [0, 10]
+                        position = [player_2.position[0] + 25, player_2.position[1]]
+                        bullet = Bullet.summon_bullet(position, cls.bullet_picture[0])
+                        bullet.speed = [0, 10]
+                        player_2.timer = time.time()
+                # if event.key == pygame.K_SPACE:
+                #     Bullet.summon_bullet(player_1.position)
+                #     position = [player_1.position[0] + 25, player_1.position[1]]
+                #     Bullet.summon_bullet(position)
+
+
+class Bullet(GameObject):
+
+    object_list = []
+
+    def __init__(
+            self, name,
+            position, max_speed, acceleration, resistance,
+            object_picture, health):
+        super().__init__(
+            name, position, max_speed,
+            acceleration, resistance,
+            object_picture)
+        self.speed = [0, -10]
+        self.health = health
+        self.object_list.append(self)
+
+    @classmethod
+    def summon_bullet(cls, position, picture):
+        return cls("player_1", position,
+                   (999, 999, 999, 999), (0.1, 0.1, 0.1, 0.1),
+                   (0, 0), picture, 100)
 
 
 def mirrored_vector(normal, vector):
@@ -289,11 +366,16 @@ screen = pygame.display.set_mode(size)
 # Loading pictures
 player_picture = pygame.image.load("g3.png").convert_alpha()
 picture = pygame.transform.scale(player_picture, (50, 50))
+bullet_picture = pygame.image.load("arrow.png").convert_alpha()
+picture_bullet_picture = pygame.transform.scale(bullet_picture, (30, 30))
 
 # Creating Player instances
 player_1 = Player(
     "player_1", [300, 300], [0.5, 0.5, 0.5, 0.5], [0.01, 0.01, 0.01, 0.01],
-    [0.0, 0.0], 1, 1, picture, 100, 1)
+    [0.0, 0.0], 1, 1, picture, 100, 1, bullet_picture=picture_bullet_picture)
+player_2 = Player(
+    "player_1", [100, 100], [0.5, 0.5, 0.5, 0.5], [0.01, 0.01, 0.01, 0.01],
+    [0.0, 0.0], 1, 1, picture, 100, 1, bullet_picture=picture_bullet_picture)
 test_object = GameObject(
     "object", [400, 400], [3, 3, 3, 3], [0.1, 0.1, 0.1, 0.1],
     [0, 0], 1, 0.5, picture, 100, 1)
@@ -301,13 +383,13 @@ test_object = GameObject(
 c = pygame.time.Clock()
 
 while True:
-    player_1.control()
+    Player.control(player_1, player_2)
     """c.tick() #Uncomment for fps counter
     print("fps ", c.get_fps())
     """
     screen.fill((0, 0, 0))  # After each frame screen is being emptied
     GameObject.manage_movement()
     screen.blit(player_1.object_picture, player_1.object_rect)  # Displaying player
-    screen.blit(test_object.object_picture, test_object.object_rect)
+    screen.blit(player_2.object_picture, player_2.object_rect)
     pygame.display.update()  # Updating display
     pygame.time.wait(1)  # Temporary solution, proper time management needed
